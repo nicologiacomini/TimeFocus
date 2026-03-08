@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  provider     String     // google, github, apple, x
+  providerId   String     // OAuth provider ID
+  name         String?
+  email        String?
+  image        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  tasks        Task[]
+  sessions     Session[]
+  settings     Settings?
+  
+  @@unique([provider, providerId])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  status      String       @default("active") // active, completed
+  totalTime   Int          @default(0) // total time in seconds
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+  taskLogs    TaskLog[]
+  
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+model Session {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startTime DateTime   @default(now())
+  endTime   DateTime?
+  totalTime Int        @default(0) // total duration in seconds
+  taskLogs  TaskLog[]
+  
+  @@index([userId, startTime])
+  @@index([userId, endTime])
+}
+
+model TaskLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  duration  Int      @default(0) // duration in seconds
+  
+  @@index([taskId, startTime])
+  @@index([sessionId, startTime])
+}
+
+model Settings {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pomodoroEnabled        Boolean  @default(false)
+  pomodoroDuration       Int      @default(25) // minutes
+  breakDuration          Int      @default(5) // minutes
+  notificationsEnabled   Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
